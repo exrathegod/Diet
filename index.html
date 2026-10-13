@@ -280,8 +280,8 @@ const COLLAGEN_PROTEIN = {collagen:18};
 // Meals: groups of food ids. q = item uses a count instead of on/off.
 const MEALS = [
   { id:'bf', title:'Breakfast', when:'Morning',
-    tip:'Eat a carb every day. D3 + K2 goes here with the eggs.',
-    usual:{egg:4, d3k2:1, creatine:1},
+    tip:'Eat a carb every day. D3 + K2 goes here with the eggs, carnitine with the carbs.',
+    usual:{egg:4, d3k2:1, creatine:1, carn:1},
     groups:[
       ['Protein',['egg']],
       ['Carb',['cow','toastpb','potato','vanYog']],
@@ -289,7 +289,7 @@ const MEALS = [
       ['Other fruit',['mango','pine','cant','wmelon']],
       ['Drink',['water','coco','melon']],
       ['After',['kefir','milk']],
-      ['Supplements',['d3k2','creatine']]
+      ['Supplements',['d3k2','creatine','carn']]
     ]},
   { id:'pre', title:'Pre-workout', rest:'Afternoon snack', when:'30 to 60 min before lifting', restWhen:'Afternoon',
     tip:'Collagen 30 to 60 min before you load your tendons.',
