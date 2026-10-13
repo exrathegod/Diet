@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Diet</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Diet">
+<meta name="theme-color" content="#1c1c1e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+/* Layout: lock screen first, then one column with a sticky day header and a bottom tab bar (Today / Calendar) */
+:root {
+  --bg: #1c1c1e;
+  --surface: #2c2c2e;
+  --raise: #3a3a3c;
+  --line: #3a3a3c;
+  --fg: #f2f2f7;
+  --muted: #98989f;
+  --key: #d1d1d6;
+  --keyfg: #1c1c1e;
+  --on: #e5e5ea;
+  --lift: #34c759;
+  --cardio: #1e5a32;
+  --sun: #444446;
+  --warn: #ff9f0a;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.4; }
+body { padding: 0 16px calc(84px + env(safe-area-inset-bottom, 0px)); }
+.num { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--lift); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* lock screen */
+#lock {
+  position: fixed; inset: 0; z-index: 50; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  padding: env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px);
+}
+#lock h1 { font-weight: 500; font-size: 20px; margin: 0; }
+.dots { display: flex; gap: 18px; }
+.dots i { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--key); }
+.dots i.f { background: var(--key); }
+.dots.shake { animation: shake .35s; }
+@keyframes shake { 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
+.pad { display: grid; grid-template-columns: repeat(3, 76px); gap: 16px; }
+.pad button {
+  height: 76px; border-radius: 18px; border: 0; background: var(--key); color: var(--keyfg);
+  font-size: 30px; font-weight: 400; cursor: pointer;
+}
+.pad button:active { background: #f2f2f7; }
+.pad .del { background: transparent; color: var(--fg); font-size: 16px; }
+.pad .blank { visibility: hidden; }
+
+/* header */
+.bar {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  margin: 0 -16px; padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px; border-bottom: 1px solid var(--line);
+}
+.bar-in { max-width: 560px; margin: 0 auto; display: grid; gap: 8px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dnav { display: flex; align-items: center; gap: 4px; }
+.dnav button { background: none; border: 0; font-size: 22px; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; color: var(--muted); }
+.dtitle { font-size: 17px; font-weight: 600; min-width: 0; }
+.dsub { font-size: 12px; color: var(--muted); }
+.lockbtn { background: var(--surface); border: 0; border-radius: 10px; padding: 7px 11px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.kcal { font-size: 20px; font-weight: 600; }
+.kcal small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.mini { font-size: 13px; color: var(--muted); }
+.mini b { color: var(--fg); font-weight: 600; }
+.track { height: 5px; background: var(--raise); border-radius: 99px; overflow: hidden; }
+.track i { display: block; height: 100%; background: var(--lift); width: 0; }
+
+main { max-width: 560px; margin: 0 auto; display: grid; gap: 12px; padding-top: 12px; }
+.card { background: var(--surface); border-radius: 14px; padding: 14px; display: grid; gap: 12px; }
+
+/* check-in */
+.check { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr); gap: 10px; }
+.wbox { background: var(--raise); border-radius: 12px; padding: 8px 12px; display: grid; gap: 2px; }
+.wbox label, .tlabel { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.wline { display: flex; align-items: baseline; gap: 4px; }
+.wbox input {
+  width: 100%; min-width: 0; background: none; border: 0; color: var(--fg); font: inherit; font-size: 22px; font-weight: 600; padding: 0;
+}
+.wbox input::placeholder { color: #636366; font-weight: 400; }
+.wbox span { color: var(--muted); font-size: 13px; }
+.wdelta { font-size: 12px; color: var(--muted); }
+.types { display: grid; gap: 6px; align-content: start; }
+.tgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tbtn { border: 0; border-radius: 12px; background: var(--raise); padding: 12px 8px; font-size: 14px; cursor: pointer; color: var(--muted); }
+.tbtn.lift[aria-pressed="true"] { background: var(--lift); color: #0b2814; font-weight: 600; }
+.tbtn.cardio[aria-pressed="true"] { background: var(--cardio); color: var(--fg); font-weight: 600; }
+
+/* meals */
+.mh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.mh h2 { font-size: 19px; font-weight: 600; margin: 0; }
+.when { color: var(--muted); font-size: 12px; }
+.tip { color: var(--muted); font-size: 13px; margin: -6px 0 0; }
+.group { display: grid; gap: 6px; }
+.glabel { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.qwrap { display: inline-flex; gap: 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--raise);
+  font-size: 14px; padding: 8px 11px; border-radius: 10px; cursor: pointer; text-align: left;
+}
+.chip small { color: var(--muted); font-size: 11.5px; }
+.chip.on { background: var(--on); color: var(--keyfg); font-weight: 600; }
+.chip.on small { color: #48484a; }
+.qty { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 6px; background: var(--keyfg); color: var(--on); font-size: 12px; font-weight: 600; padding: 0 5px; }
+.minus { border: 0; background: var(--raise); font-size: 17px; width: 32px; border-radius: 10px; cursor: pointer; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--raise); background: transparent; font-size: 13px; padding: 7px 12px; border-radius: 999px; cursor: pointer; }
+.btn.primary { background: var(--on); color: var(--keyfg); border-color: var(--on); font-weight: 600; }
+.sub { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 8px; }
+.sub-mac { font-size: 14px; }
+.sub-mac span { color: var(--muted); }
+.link { background: none; border: 0; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 13px; }
+.mgrid div { display: flex; justify-content: space-between; gap: 6px; min-width: 0; }
+.mgrid span { color: var(--muted); }
+
+/* totals */
+.card h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 8px; }
+.rows { display: grid; gap: 9px; }
+.r { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 10px; font-size: 14px; }
+.r .v { text-align: right; }
+.r .v span { color: var(--muted); }
+.r .track { grid-column: 1 / -1; height: 4px; }
+.r.over .track i { background: var(--warn); }
+.note { color: var(--muted); font-size: 12px; margin: 0; }
+
+/* calendar */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 5px; }
+.cal .dow { font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 2px; }
+.cell {
+  aspect-ratio: 1 / 1.25; max-width: 100%; border: 0; border-radius: 10px; background: var(--raise);
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
+  padding: 5px; cursor: pointer; text-align: left; min-width: 0; overflow: hidden;
+}
+.cell .n { font-size: 13px; font-weight: 600; }
+.cell .s { font-size: 10px; line-height: 1.2; color: var(--muted); }
+.cell.lift { background: var(--lift); color: #0b2814; }
+.cell.lift .s { color: #0b2814; }
+.cell.cardio { background: var(--cardio); }
+.cell.cardio .s { color: #b9d9c2; }
+.cell.sun { background: var(--sun); }
+.cell.empty { visibility: hidden; }
+.cell.today { box-shadow: inset 0 0 0 2px var(--fg); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat { background: var(--raise); border-radius: 12px; padding: 10px 12px; }
+.stat b { display: block; font-size: 18px; font-weight: 600; }
+.stat span { font-size: 12px; color: var(--muted); }
+textarea { width: 100%; min-height: 70px; background: var(--raise); color: var(--fg); border: 0; border-radius: 10px; padding: 10px; font: inherit; font-size: 12px; }
+
+/* tab bar */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg); border-top: 1px solid var(--line);
+  display: flex; justify-content: center; gap: 10px; padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+}
+.tabs button { flex: 1; max-width: 200px; border: 0; background: transparent; border-radius: 12px; padding: 10px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .dots.shake { animation: none; } }
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <h1>Enter passcode</h1>
+  <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+  <div class="pad" id="pad"></div>
+</div>
+
+<div id="root" hidden>
+  <header class="bar"><div class="bar-in" id="head"></div></header>
+  <main id="main"></main>
+  <nav class="tabs">
+    <button id="tabToday" aria-pressed="true">Today</button>
+    <button id="tabCal" aria-pressed="false">Calendar</button>
+  </nav>
+</div>
+
+<script>
+// Micronutrient keys, labels, units and FDA daily values
+const MIC = [
+  ['A','Vitamin A','mcg',900],['C','Vitamin C','mg',90],['D','Vitamin D','IU',800],['E','Vitamin E','mg',15],['K','Vitamin K','mcg',120],
+  ['B1','Thiamin (B1)','mg',1.2],['B2','Riboflavin (B2)','mg',1.3],['B3','Niacin (B3)','mg',16],['B5','Pantothenic (B5)','mg',5],['B6','Vitamin B6','mg',1.7],
+  ['Fol','Folate','mcg',400],['B12','Vitamin B12','mcg',2.4],['Cho','Choline','mg',550],
+  ['Ca','Calcium','mg',1300],['Fe','Iron','mg',18],['Mg','Magnesium','mg',420],['P','Phosphorus','mg',1250],['Pot','Potassium','mg',4700],
+  ['Na','Sodium','mg',2300],['Zn','Zinc','mg',11],['Cu','Copper','mg',0.9],['Se','Selenium','mcg',55],['Mn','Manganese','mg',2.3],['O3','Omega-3','g',1.6]
+];
+// Vitamin D values below are stored in IU (1 mcg = 40 IU)
+
+// Foods: [name, portion, [kcal, protein, carbs, fat, fiber, sugar, satFat], micros]
+const F = {
+  egg:     ['Egg','1 large',[71.5,6.25,.375,4.75,0,.2,1.55],{A:80,D:44,E:.53,K:.3,B1:.02,B2:.23,B3:.08,B5:.78,B6:.085,Fol:23.5,B12:.45,Cho:147,Ca:28,Fe:.88,Mg:6,P:99,Pot:69,Na:71,Zn:.65,Cu:.035,Se:15.3,Mn:.015,O3:.06}],
+  cow:     ['Cream of wheat','1 bowl',[130,4,27,.5,1,0,.1],{B1:.2,B2:.1,B3:1.5,Fol:80,Ca:110,Fe:9,Mg:12,P:40,Pot:50,Na:5,Zn:.3,Se:8,Mn:.1}],
+  toast:   ['Toast + butter','1 slice sourdough',[181,5,25,6.75,1,1,3.75],{A:48,E:.2,K:.5,B1:.25,B2:.15,B3:2.25,B5:.2,B6:.05,Fol:90,Cho:7.5,Ca:20,Fe:1.75,Mg:13,P:55,Pot:60,Na:305,Zn:.45,Cu:.075,Se:15,Mn:.3}],
+  potato:  ['Potato','1 large, with butter',[335,6,53,11.8,5.5,3,7.4],{A:97,C:24,E:.4,K:5,B1:.16,B2:.12,B3:3.5,B5:.9,B6:.75,Fol:70,Cho:30,Ca:38,Fe:2.7,Mg:70,P:175,Pot:1340,Na:25,Zn:.9,Cu:.3,Se:1,Mn:.5}],
+  yogurt:  ['Greek yogurt + honey','1 bowl, whole milk',[241,20,15,11,0,15,7],{A:80,E:.2,K:1,B1:.05,B2:.5,B3:.5,B5:.75,B6:.15,Fol:12,B12:1.7,Cho:35,Ca:230,Fe:.2,Mg:25,P:300,Pot:320,Na:80,Zn:1.2,Cu:.03,Se:22}],
+  banana:  ['Banana','1 medium',[105,1.3,27,.4,3.1,14.4,.1],{A:4,C:10.3,E:.1,K:.6,B1:.04,B2:.09,B3:.8,B5:.4,B6:.43,Fol:24,Cho:11.6,Ca:6,Fe:.3,Mg:32,P:26,Pot:422,Na:1,Zn:.2,Cu:.09,Se:1.2,Mn:.32}],
+  kiwi:    ['Kiwi','1 fruit',[46,.85,11,.4,2.25,6.75,0],{A:3,C:70,E:1.1,K:30,B1:.02,B2:.02,B3:.25,B5:.135,B6:.045,Fol:19,Cho:6,Ca:25,Fe:.25,Mg:12.5,P:25,Pot:235,Zn:.1,Cu:.1,Mn:.075}],
+  avocado: ['Avocado','1 whole',[240,3,12.8,22,10,1,3.2],{A:10,C:15,E:3.1,K:31,B1:.1,B2:.2,B3:2.6,B5:2.1,B6:.39,Fol:122,Cho:21,Ca:18,Fe:.8,Mg:44,P:78,Pot:728,Na:10,Zn:1,Cu:.29,Se:.6,Mn:.2,O3:.17}],
+  berries: ['Berries','2 handfuls',[70,1,17,.4,4,11,0],{A:3,C:50,E:.6,K:15,B1:.04,B2:.04,B3:.5,B5:.2,B6:.07,Fol:30,Cho:8,Ca:20,Fe:.5,Mg:18,P:25,Pot:200,Na:1,Zn:.2,Cu:.08,Se:.5,Mn:.5}],
+  mango:   ['Mango','½ mango',[99,1.4,25,.6,2.6,22.5,.1],{A:89,C:60,E:1.5,K:7,B1:.05,B2:.06,B3:1,B5:.3,B6:.2,Fol:71,Cho:12.5,Ca:18,Fe:.3,Mg:16,P:23,Pot:277,Na:2,Zn:.15,Cu:.18,Se:1,Mn:.1}],
+  pine:    ['Pineapple','fist-size pile of chunks',[82,.9,21.6,.2,2.3,16.3,0],{A:5,C:79,K:1.2,B1:.13,B2:.05,B3:.8,B5:.35,B6:.18,Fol:30,Cho:9,Ca:21,Fe:.5,Mg:20,P:13,Pot:180,Na:2,Zn:.2,Cu:.18,Se:.2,Mn:1.5}],
+  water:   ['Water','',[0,0,0,0,0,0,0],{}],
+  yogurt0: ['Greek yogurt','1 bowl',[135,23,8,.7,0,7,.2],{B2:.6,B5:.75,B6:.15,Fol:15,B12:1.7,Cho:34,Ca:250,Mg:25,P:310,Pot:320,Na:82,Zn:1.2,Se:22}],
+  eggs2:   ['Hard-boiled eggs','2 large',[143,12.5,.75,9.5,0,.4,3.1],{A:160,D:88,E:1,K:.6,B1:.04,B2:.46,B3:.15,B5:1.55,B6:.17,Fol:47,B12:.89,Cho:294,Ca:56,Fe:1.75,Mg:12,P:198,Pot:138,Na:142,Zn:1.3,Cu:.07,Se:30,Mn:.03,O3:.12}],
+  coco:    ['Coconut water','1 glass',[45,.85,9,.25,1.25,6,.2],{C:2.5,B1:.035,B2:.065,B3:.1,B5:.05,B6:.035,Fol:3.5,Cho:1.25,Ca:29,Fe:.35,Mg:30,P:25,Pot:600,Na:125,Zn:.1,Cu:.05,Se:1,Mn:.15}],
+  melon:   ['Watermelon juice','1 glass',[70,1.35,17.5,.35,.75,14,.05],{A:65,C:18.5,E:.1,K:.25,B1:.075,B2:.05,B3:.4,B5:.5,B6:.1,Fol:7,Cho:9.5,Ca:16,Fe:.55,Mg:23,P:25,Pot:255,Na:2.5,Zn:.2,Cu:.1,Se:.9,Mn:.085}],
+  kefir:   ['Kefir','1 glass',[150,9,12,8,0,12,5],{A:70,D:100,E:.1,K:.5,B1:.07,B2:.45,B3:.2,B5:.8,B6:.1,Fol:12,B12:.85,Cho:40,Ca:300,Fe:.1,Mg:30,P:240,Pot:380,Na:100,Zn:1,Cu:.03,Se:5}],
+  milk:    ['Milk','1 glass, whole',[150,8,12,8,0,12,4.6],{A:112,D:116,E:.15,K:.7,B1:.1,B2:.41,B3:.2,B5:.9,B6:.09,Fol:12,B12:1.1,Cho:35,Ca:276,Fe:.07,Mg:24,P:205,Pot:322,Na:105,Zn:.9,Cu:.03,Se:9,O3:.08}],
+  honey:   ['Honey','1 big spoonful',[64,0,17,0,0,17,0],{Pot:11}],
+  beefA:   ['Ancestral blend','¾ lb · 80/12/4/4',[820,60,0,63,0,0,25],{A:680,D:12,E:1.2,K:4,B1:.15,B2:.9,B3:13.4,B5:2.6,B6:1.1,Fol:60,B12:14,Cho:210,Ca:54,Fe:8.5,Mg:50,P:480,Pot:770,Na:200,Zn:12.5,Cu:2.1,Se:50,Mn:.03,O3:.2}],
+  beef90:  ['Lean beef 90/10','¾ lb',[600,68,0,34,0,0,13.5],{D:12,E:1.2,K:4,B1:.15,B2:.6,B3:18,B5:2,B6:1.25,Fol:24,B12:7.5,Cho:220,Ca:40,Fe:7.8,Mg:68,P:650,Pot:1120,Na:225,Zn:16,Cu:.24,Se:54,Mn:.03,O3:.1}],
+  parm:    ['Parmesan','1 piece, 1×3 in',[111,10,.9,7.3,0,.2,4.7],{A:60,B2:.1,B12:.34,Cho:4,Ca:336,Mg:12,P:197,Pot:35,Na:445,Zn:1.1,Se:6}],
+  meat3:   ['Leftover meat','palm-size piece',[192,22.5,0,11.1,0,0,4.5],{A:3,D:4,E:.4,K:1.2,B1:.06,B2:.15,B3:6.3,B5:.5,B6:.54,Fol:7.5,B12:1.7,Cho:84,Ca:12,Fe:2,Mg:21,P:186,Pot:270,Na:47,Zn:3.9,Cu:.08,Se:24,O3:.03}],
+  jerky:   ['Beef jerky','small handful',[116,9.4,3,7.3,.5,2.6,3],{B1:.04,B2:.04,B3:1.5,B6:.05,B12:.3,Cho:15,Ca:6,Fe:1.5,Mg:14,P:115,Pot:170,Na:590,Zn:2.3,Cu:.06,Se:3}],
+  cheese:  ['Raw cheddar','1 piece, 1×3 in',[115,7,.4,9.5,0,.1,5.4],{A:75,K:1,B2:.1,B12:.3,Cho:5,Ca:200,Mg:8,P:145,Pot:22,Na:180,Zn:1,Se:8}],
+  yogGran: ['Yogurt + granola','1 bowl',[260,26,28.5,4.2,2.5,14,1],{B2:.6,B5:.75,B6:.15,Fol:15,B12:1.7,Cho:34,Ca:265,Fe:1.4,Mg:55,P:370,Pot:420,Na:114,Zn:1.9,Cu:.15,Se:22,Mn:.8}],
+  granola: ['Granola','1 handful',[125,3,20.5,3.5,2.5,7,.75],{Ca:15,Fe:1.4,Mg:30,P:60,Pot:100,Na:32,Zn:.7,Cu:.15,Mn:.8}],
+  pbtoast: ['Toast + peanut butter','1 slice',[190,7,21,9,2,2,1.7],{E:1.4,B1:.2,B3:3.5,B6:.1,Fol:70,Cho:12,Ca:15,Fe:1.5,Mg:35,P:90,Pot:140,Na:230,Zn:.8,Cu:.15,Se:12,Mn:.5}],
+  apple:   ['Apple','1 medium',[95,.5,25,.3,4.4,19,0],{C:8.4,K:4,B6:.07,Fol:5,Cho:6,Ca:11,Mg:9,Pot:195,Cu:.05,Mn:.06}],
+  grapes:  ['Grapes','1 cup',[104,1.1,27,.2,1.4,23,.1],{C:4.8,K:22,B1:.1,B6:.13,Ca:15,Mg:11,Pot:288,Cu:.19,Mn:.1}],
+  dates:   ['Dates','2 medjool',[133,.9,36,.1,3.2,32,0],{B3:.8,B5:.4,B6:.12,Ca:31,Fe:.44,Mg:26,Pot:334,Cu:.17,Mn:.14}],
+  zombie:  ['Sausage cheese zombie','school, 1 roll',[420,16,40,22,1.5,5,9],{A:60,B1:.4,B2:.3,B3:3.5,Fol:90,B12:.6,Cho:40,Ca:180,Fe:2.5,Mg:20,P:200,Pot:200,Na:850,Zn:1.8,Se:25}],
+  pizza:   ['Pizza','1 slice',[285,12,36,10,2.5,4,4.5],{A:70,B1:.3,B3:4,Fol:60,B12:.4,Ca:200,Fe:2.5,P:230,Pot:180,Na:640,Zn:1.3,Se:18}],
+  chips:   ['Chips','1 small bag',[150,2,15,10,1,.2,1.5],{C:5,E:1.4,K:5,B3:1.2,B6:.2,Fol:15,Mg:19,Pot:350,Na:150}],
+  cookie:  ['Cookie','1 large',[200,2,28,9,1,16,4.5],{B1:.1,Fol:30,Ca:10,Fe:1,Na:140}],
+  rice:    ['Rice','1 fist-size cup, cooked',[205,4.25,44.5,.45,.6,.1,.1],{B1:.25,B2:.02,B3:2.35,B5:.4,B6:.15,Fol:150,Cho:4,Ca:15,Fe:1.9,Mg:19,P:67.5,Pot:55,Na:1.5,Zn:.8,Cu:.1,Se:12,Mn:.375}],
+  oysters: ['Oysters','6 oysters',[60,7,3.5,2,0,0,.5],{A:70,C:5,D:200,B1:.08,B2:.15,B3:1.5,B12:14,Cho:55,Ca:40,Fe:5,Mg:30,P:150,Pot:140,Na:180,Zn:25,Cu:2.5,Se:50,Mn:.3,O3:.4}],
+  liver:   ['Beef liver','1 small bite, 2 thumbs',[77,11.5,2.2,2.1,0,0,.7],{A:5350,C:.7,D:28,K:2,B1:.11,B2:1.6,B3:7.5,B5:4,B6:.6,Fol:165,B12:33,Cho:190,Ca:3,Fe:2.8,Mg:10,P:220,Pot:180,Na:40,Zn:2.3,Cu:5.6,Se:22,Mn:.18}],
+  orange:  ['Orange','1 medium',[62,1.2,15.4,.2,3.1,12.2,0],{A:14,C:70,E:.2,B1:.11,B2:.05,B3:.37,B5:.33,B6:.08,Fol:40,Cho:11,Ca:52,Fe:.13,Mg:13,P:18,Pot:237,Zn:.1,Cu:.06,Se:.7,Mn:.03}],
+  steak:   ['Steak','10 oz',[640,75,0,37,0,0,15],{A:10,D:12,E:1.2,K:4,B1:.2,B2:.5,B3:21,B5:1.6,B6:1.8,Fol:25,B12:5.6,Cho:280,Ca:40,Fe:6.5,Mg:70,P:620,Pot:900,Na:155,Zn:13,Cu:.25,Se:80,Mn:.04,O3:.1}],
+  salmon:  ['Salmon','7 oz wild',[360,50,0,16,0,0,2.5],{A:50,D:800,E:2,K:.5,B1:.4,B2:.9,B3:20,B5:3.3,B6:1.9,Fol:50,B12:9,Cho:230,Ca:30,Fe:1.5,Mg:74,P:650,Pot:1130,Na:120,Zn:1.1,Cu:.15,Se:90,Mn:.04,O3:3.5}],
+  tuna:    ['Ahi tuna','7 oz',[260,58,0,2,0,0,.5],{A:30,D:80,B1:.2,B2:.2,B3:37,B5:.9,B6:1.9,Fol:4,B12:4,Cho:120,Ca:8,Fe:1.6,Mg:110,P:560,Pot:1000,Na:100,Zn:1.2,Cu:.15,Se:190,O3:.5}],
+  chicken: ['Chicken thighs','8 oz',[400,54,0,19,0,0,5],{A:40,E:.6,K:4,B1:.15,B2:.5,B3:14,B5:2.6,B6:.9,Fol:15,B12:.8,Cho:200,Ca:25,Fe:2.5,Mg:50,P:420,Pot:530,Na:220,Zn:5,Cu:.17,Se:50,O3:.15}],
+  mac:     ['Mac and cheese','1 side bowl',[320,12,33,14.7,1.3,4,7.3],{A:100,E:.33,K:1.3,B1:.33,B2:.33,B3:2.7,B5:.4,B6:.07,Fol:100,B12:.53,Cho:20,Ca:200,Fe:1.7,Mg:27,P:233,Pot:147,Na:600,Zn:1.3,Cu:.1,Se:20,Mn:.27}],
+  veg:     ['Veggies','fist-size side',[60,2,12,.3,4,5,0],{A:900,C:20,E:1,K:100,B1:.08,B2:.07,B3:.8,B5:.3,B6:.2,Fol:60,Cho:12,Ca:50,Fe:.8,Mg:25,P:50,Pot:400,Na:70,Zn:.4,Cu:.1,Mn:.3}],
+  fruit:   ['Fruit','1 piece',[90,1,23,.3,3,15,0],{A:10,C:35,E:.2,K:3,B1:.05,B2:.06,B3:.5,B5:.3,B6:.25,Fol:25,Cho:9,Ca:20,Fe:.3,Mg:18,P:20,Pot:300,Zn:.15,Cu:.08,Mn:.2}],
+  icecream:['Ice cream','1 bowl, 2 scoops',[275,4.7,32,15,1,28,9],{A:155,E:.4,K:.5,B1:.05,B2:.3,B3:.2,B5:.7,B6:.06,Fol:7,B12:.5,Cho:35,Ca:170,Fe:.2,Mg:18,P:140,Pot:260,Na:105,Zn:.9,Cu:.03,Se:4}],
+  eggs3:   ['Eggs','3 large',[215,19,1.1,14.3,0,.6,4.7],{A:240,D:132,E:1.6,K:.9,B1:.06,B2:.68,B3:.2,B5:2.3,B6:.26,Fol:70,B12:1.34,Cho:441,Ca:84,Fe:2.6,Mg:18,P:297,Pot:207,Na:213,Zn:2,Cu:.1,Se:46,Mn:.05,O3:.19}],
+  cottage: ['Cottage cheese','1 bowl',[220,25,8,10,0,6,4],{A:80,B2:.37,B5:.5,B6:.1,Fol:26,B12:.9,Cho:40,Ca:190,Mg:18,P:340,Pot:230,Na:820,Zn:.9,Se:20}],
+  // snack groups: rough average serving of each
+  sDairy:  ['Dairy','≈ glass of milk',[150,8,12,8,0,12,4.6],{A:112,D:116,B2:.41,B5:.9,B12:1.1,Cho:35,Ca:276,Mg:24,P:205,Pot:322,Na:105,Zn:.9,Se:9}],
+  sCarb:   ['Carbs','≈ toast + PB',[200,6,28,8,2,4,1.5],{E:1.3,B1:.2,B2:.1,B3:3,B5:.3,B6:.08,Fol:60,Cho:12,Ca:30,Fe:1.5,Mg:30,P:80,Pot:150,Na:220,Zn:.7,Cu:.1,Se:10,Mn:.4}],
+  sFruit:  ['Fruit','≈ 1 banana',[95,1.2,25,.4,3,14,.1],{C:20,B6:.35,Fol:24,Mg:28,Pot:380,Mn:.28,Cu:.08,Cho:10,Ca:10,P:24,B3:.7,B5:.35}],
+  sProt:   ['Protein','≈ 2 eggs or 3 oz meat',[150,13,1,10,0,.4,3.5],{A:120,D:60,E:.8,B1:.05,B2:.4,B3:2,B5:1,B6:.2,Fol:40,B12:1.5,Cho:250,Ca:40,Fe:1.5,Mg:14,P:180,Pot:180,Na:140,Zn:2,Cu:.07,Se:25,O3:.1}],
+  // supplements
+  d3k2:    ['D3 + K2','2 drops',[0,0,0,0,0,0,0],{D:1000,K:200}],
+  creatine:['Creatine','5 g',[0,0,0,0,0,0,0],{}],
+  collagen:['Collagen','2 scoops',[70,18,0,0,0,0,0],{}],
+  carn:    ['L-carnitine','',[0,0,0,0,0,0,0],{}],
+  mag:     ['Magnesium glycinate','',[0,0,0,0,0,0,0],{Mg:360}],
+  boron:   ['Boron','6 mg · 2 on, 1 off',[0,0,0,0,0,0,0],{}]
+};
+const COLLAGEN_PROTEIN = {collagen:18};
+
+// Meals: groups of food ids. q = item uses a count instead of on/off.
+const MEALS = [
+  { id:'bf', title:'Breakfast', when:'Morning',
+    tip:'Eat a carb every day. D3 + K2 goes here with the eggs.',
+    usual:{egg:4, d3k2:1, creatine:1},
+    groups:[
+      ['Protein',['egg']],
+      ['Carb',['cow','toast','potato','yogurt']],
+      ['Fruit',['banana','kiwi','avocado','berries','mango','pine']],
+      ['Drink',['water','coco','melon']],
+      ['After',['kefir','milk'],['milk']],
+      ['Supplements',['d3k2','creatine']]
+    ]},
+  { id:'pre', title:'Pre-workout', rest:'Afternoon snack', when:'30 to 60 min before lifting', restWhen:'Afternoon',
+    tip:'Collagen 30 to 60 min before you load your tendons.',
+    restTip:'Rest day: a snack in place of pre-workout.',
+    usual:{banana:2, honey:1, yogurt0:1, collagen:1}, restUsual:{egg:2, banana:1, collagen:1},
+    groups:[
+      ['Food',['banana','honey','yogurt0','granola']],
+      ['Supplements',['collagen']]
+    ],
+    restGroups:[
+      ['Food',['egg','banana','yogurt0','fruit']],
+      ['Supplements',['collagen']]
+    ]},
+  { id:'post', title:'Post-workout', rest:'Lunch', when:'After lifting', restWhen:'Midday',
+    tip:'Carbs and protein right away. D3 + K2 here since the beef has fat.',
+    restTip:'Tap what you ate. Keep calories up on rest days.',
+    usual:{beefA:1, rice:2, orange:1, coco:2, milk:1, d3k2:1, carn:1},
+    groups:[
+      ['Beef',['beefA','beef90']],
+      ['Carb',['rice']],
+      ['Fruit',['orange']],
+      ['Drink',['water','coco','melon']],
+      ['After',['milk'],['milk']],
+      ['Supplements',['d3k2','carn']]
+    ]},
+  { id:'snack', title:'Snacks', when:'Anytime before dinner',
+    tip:'Tap once per serving.',
+    groups:[
+      ['Protein',['egg','meat3','jerky']],
+      ['Dairy',['milk','cheese','parm','yogurt0','yogGran','cottage']],
+      ['Carbs',['pbtoast','granola']],
+      ['Fruit',['banana','apple','orange','kiwi','berries','grapes','mango','pine','dates']],
+      ['Junk',['zombie','pizza','chips','cookie','icecream']]
+    ]},
+  { id:'dinner', title:'Dinner', when:'Evening',
+    tip:'Steak or fatty fish most nights. D3 + K2 with the meal. Keep liver to 1 or 2 bites a week, it carries a lot of vitamin A.',
+    usual:{steak:1, rice:2, d3k2:1},
+    groups:[
+      ['Protein',['steak','salmon','tuna','chicken']],
+      ['Carb',['rice','potato','mac']],
+      ['Side',['oysters','liver','veg','fruit']],
+      ['Drink',['water','coco','melon']],
+      ['After',['milk'],['milk']],
+      ['Supplements',['d3k2']]
+    ]},
+  { id:'night', title:'Night', when:'Right after dinner',
+    tip:'Magnesium and boron here. Ice cream on lift days, more protein on rest days.',
+    usual:{mag:1, boron:1},
+    groups:[
+      ['Eat',['icecream','yogurt','egg','cottage','milk']],
+      ['Supplements',['mag','boron']]
+    ]}
+];
+
+
+
+const TARGET = {kcal:3600, p:150, c:450, f:120};
+const KEY = 'the-diet-app-v1';
+const PIN = '1126';
+const liftDays = [1,2,4,6]; // Mon Tue Thu Sat
+const pad2 = n => String(n).padStart(2,'0');
+const keyOf = d => d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const dateOf = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+const todayKey = () => keyOf(new Date());
+
+let DB = load();
+function load(){ try { const x = JSON.parse(localStorage.getItem(KEY)); if (x && x.days) return x; } catch(e){} return {days:{}}; }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){} }
+const peek = k => DB.days[k];
+const day = k => DB.days[k] || (DB.days[k] = {sel:{}});
+
+let cur = todayKey(), view = 'today';
+let calMonth = new Date(); calMonth.setDate(1);
+const open = {};
+
+function isRest(k){
+  const t = peek(k) && peek(k).type;
+  if (t === 'lift') return false;
+  if (t === 'cardio') return true;
+  return !liftDays.includes(dateOf(k).getDay());
+}
+
+function sumMeal(sel){
+  const t = {m:[0,0,0,0,0,0,0], v:{}, col:0};
+  for (const id in (sel||{})) {
+    const q = sel[id]; if (!q || !F[id]) continue; const f = F[id];
+    f[2].forEach((x,i)=> t.m[i] += x*q);
+    for (const k in f[3]) t.v[k] = (t.v[k]||0) + f[3][k]*q;
+    if (COLLAGEN_PROTEIN[id]) t.col += COLLAGEN_PROTEIN[id]*q;
+  }
+  return t;
+}
+function addT(a,b){ b.m.forEach((x,i)=>a.m[i]+=x); for (const k in b.v) a.v[k]=(a.v[k]||0)+b.v[k]; a.col+=b.col; return a; }
+function dayTotals(k){
+  const d = peek(k); const t = {m:[0,0,0,0,0,0,0], v:{}, col:0};
+  if (d) MEALS.forEach(m => addT(t, sumMeal(d.sel[m.id])));
+  return t;
+}
+function commit(k){
+  const d = day(k); const t = dayTotals(k);
+  d.tot = {k:Math.round(t.m[0]), p:Math.round(t.m[1])};
+  save(); render();
+}
+const r0 = x => Math.round(x).toLocaleString();
+function fmt(x,unit){
+  if (unit==='IU' || x>=100) return Math.round(x).toLocaleString();
+  if (x>=10) return x.toFixed(0);
+  return x.toFixed(1).replace(/\.0$/,'');
+}
+
+/* ---------- lock ---------- */
+let entry = '';
+const lockEl = document.getElementById('lock'), rootEl = document.getElementById('root');
+const padEl = document.getElementById('pad'), dotsEl = document.getElementById('dots');
+['1','2','3','4','5','6','7','8','9','','0','del'].forEach(k => {
+  const b = document.createElement('button'); b.type = 'button';
+  if (k === '') { b.className = 'blank'; b.tabIndex = -1; }
+  else if (k === 'del') { b.className = 'del'; b.textContent = 'Delete'; b.onclick = () => { entry = entry.slice(0,-1); drawDots(); }; }
+  else { b.textContent = k; b.onclick = () => press(k); }
+  padEl.appendChild(b);
+});
+function drawDots(){ [...dotsEl.children].forEach((d,i)=> d.classList.toggle('f', i < entry.length)); }
+function press(k){
+  if (entry.length >= 4) return;
+  entry += k; drawDots();
+  if (entry.length === 4) setTimeout(() => {
+    if (entry === PIN) { lockEl.hidden = true; rootEl.hidden = false; entry = ''; drawDots(); cur = todayKey(); render(); }
+    else { dotsEl.classList.add('shake'); setTimeout(()=>{ dotsEl.classList.remove('shake'); entry=''; drawDots(); }, 360); }
+  }, 120);
+}
+document.addEventListener('keydown', e => {
+  if (lockEl.hidden) return;
+  if (/^[0-9]$/.test(e.key)) press(e.key);
+  if (e.key === 'Backspace') { entry = entry.slice(0,-1); drawDots(); }
+});
+function lock(){ lockEl.hidden = false; rootEl.hidden = true; entry=''; drawDots(); }
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) hiddenAt = Date.now();
+  else if (hiddenAt && Date.now() - hiddenAt > 5*60*1000) lock();
+});
+
+/* ---------- render ---------- */
+const head = document.getElementById('head'), main = document.getElementById('main');
+document.getElementById('tabToday').onclick = () => { view='today'; render(); window.scrollTo(0,0); };
+document.getElementById('tabCal').onclick = () => { view='cal'; calMonth = dateOf(cur); calMonth.setDate(1); render(); window.scrollTo(0,0); };
+
+function render(){
+  document.getElementById('tabToday').setAttribute('aria-pressed', String(view==='today'));
+  document.getElementById('tabCal').setAttribute('aria-pressed', String(view==='cal'));
+  if (view === 'today') renderToday(); else renderCal();
+}
+
+function shiftDay(n){ const d = dateOf(cur); d.setDate(d.getDate()+n); cur = keyOf(d); render(); }
+
+function lastWeightBefore(k){
+  const keys = Object.keys(DB.days).filter(x => x < k && DB.days[x].w).sort();
+  return keys.length ? DB.days[keys[keys.length-1]].w : null;
+}
+
+function renderToday(){
+  const t = dayTotals(cur);
+  const d = dateOf(cur); const isToday = cur === todayKey();
+  head.innerHTML = `
+    <div class="row">
+      <div class="dnav">
+        <button type="button" id="prev" aria-label="Previous day">‹</button>
+        <div><div class="dtitle">${isToday ? 'Today' : d.toLocaleDateString(undefined,{weekday:'long'})}</div><div class="dsub">${d.toLocaleDateString(undefined,{weekday: isToday?'long':undefined, month:'short', day:'numeric'})}</div></div>
+        <button type="button" id="next" aria-label="Next day">›</button>
+      </div>
+      <button class="lockbtn" type="button" id="lockb">Lock</button>
+    </div>
+    <div class="row">
+      <div class="kcal num">${r0(t.m[0])} <small>/ 3,600 kcal</small></div>
+      <div class="mini num"><b>${r0(t.m[1])}</b>P · <b>${r0(t.m[2])}</b>C · <b>${r0(t.m[3])}</b>F</div>
+    </div>
+    <div class="track"><i style="width:${Math.min(100, t.m[0]/TARGET.kcal*100)}%"></i></div>`;
+  head.querySelector('#prev').onclick = () => shiftDay(-1);
+  head.querySelector('#next').onclick = () => shiftDay(1);
+  head.querySelector('#lockb').onclick = lock;
+
+  main.innerHTML = '';
+  const rest = isRest(cur);
+  const dd = peek(cur) || {sel:{}};
+
+  // check-in card
+  const ci = document.createElement('section'); ci.className = 'card';
+  const prevW = lastWeightBefore(cur);
+  const delta = (dd.w && prevW) ? (dd.w - prevW) : null;
+  ci.innerHTML = `
+    <div class="check">
+      <div class="wbox">
+        <label for="wIn">Morning weigh-in</label>
+        <div class="wline"><input id="wIn" type="number" inputmode="decimal" step="0.1" placeholder="—" value="${dd.w ?? ''}" class="num"><span>lb</span></div>
+        <div class="wdelta num">${delta === null ? (prevW ? 'Last: '+prevW+' lb' : 'Before eating') : (delta>=0?'+':'')+delta.toFixed(1)+' lb since last'}</div>
+      </div>
+      <div class="types">
+        <div class="tlabel">Training</div>
+        <div class="tgrid">
+          <button type="button" class="tbtn lift" id="tLift" aria-pressed="${dd.type==='lift'}">Lifted</button>
+          <button type="button" class="tbtn cardio" id="tCardio" aria-pressed="${dd.type==='cardio'}">Cardio</button>
+        </div>
+      </div>
+    </div>`;
+  ci.querySelector('#wIn').addEventListener('change', e => {
+    const v = parseFloat(e.target.value);
+    if (isNaN(v) || v <= 0) delete day(cur).w; else day(cur).w = Math.round(v*10)/10;
+    commit(cur);
+  });
+  const setType = ty => { const x = day(cur); x.type = x.type === ty ? undefined : ty; if (!x.type) delete x.type; commit(cur); };
+  ci.querySelector('#tLift').onclick = () => setType('lift');
+  ci.querySelector('#tCardio').onclick = () => setType('cardio');
+  main.appendChild(ci);
+
+  // meals
+  MEALS.forEach(meal => {
+    const sel = dd.sel[meal.id] || {};
+    const mt = sumMeal(sel);
+    const sec = document.createElement('section'); sec.className = 'card';
+    const title = rest && meal.rest ? meal.rest : meal.title;
+    const when = rest && meal.restWhen ? meal.restWhen : meal.when;
+    const tip = rest && meal.restTip ? meal.restTip : meal.tip;
+    sec.innerHTML = `<div class="mh"><h2>${title}</h2><span class="when">${when}</span></div><p class="tip">${tip}</p>`;
+    (rest && meal.restGroups ? meal.restGroups : meal.groups).forEach(([label, ids]) => {
+      const g = document.createElement('div'); g.className = 'group';
+      g.innerHTML = `<div class="glabel">${label}</div>`;
+      const chips = document.createElement('div'); chips.className = 'chips';
+      ids.forEach(id => {
+        const f = F[id]; const q = sel[id]||0; const isQ = label !== 'Supplements';
+        const wrap = document.createElement('span'); wrap.className = 'qwrap';
+        const b = document.createElement('button'); b.type='button';
+        b.className = 'chip' + (q ? ' on' : ''); b.setAttribute('aria-pressed', String(!!q));
+        b.innerHTML = `${f[0]}${f[1]?` <small>${f[1]}</small>`:''}${isQ && q ? ` <span class="qty">×${q}</span>`:''}`;
+        b.onclick = () => { const x = day(cur); x.sel[meal.id] = x.sel[meal.id] || {}; const c = x.sel[meal.id][id]||0; x.sel[meal.id][id] = isQ ? c+1 : (c?0:1); commit(cur); };
+        wrap.appendChild(b);
+        if (isQ && q) {
+          const m = document.createElement('button'); m.type='button'; m.className='minus'; m.textContent='−';
+          m.setAttribute('aria-label','One less '+f[0]);
+          m.onclick = () => { day(cur).sel[meal.id][id] = q-1; commit(cur); };
+          wrap.appendChild(m);
+        }
+        chips.appendChild(wrap);
+      });
+      g.appendChild(chips); sec.appendChild(g);
+    });
+    const act = document.createElement('div'); act.className='actions';
+    const usual = rest && meal.restUsual ? meal.restUsual : meal.usual;
+    if (usual) {
+      const u = document.createElement('button'); u.type='button'; u.className='btn primary'; u.textContent='Ate the usual';
+      u.onclick = () => { const x = day(cur); x.sel[meal.id] = Object.assign({}, x.sel[meal.id]||{}, usual); commit(cur); };
+      act.appendChild(u);
+    }
+    if (Object.values(sel).some(Boolean)) {
+      const c = document.createElement('button'); c.type='button'; c.className='btn'; c.textContent='Clear';
+      c.onclick = () => { day(cur).sel[meal.id] = {}; commit(cur); };
+      act.appendChild(c);
+    }
+    if (act.children.length) sec.appendChild(act);
+    const sub = document.createElement('div'); sub.className='sub';
+    const isOpen = !!open[meal.id];
+    sub.innerHTML = `<div class="row"><div class="sub-mac num"><b>${r0(mt.m[0])}</b> <span>kcal ·</span> <b>${r0(mt.m[1])}</b><span>P ·</span> <b>${r0(mt.m[2])}</b><span>C ·</span> <b>${r0(mt.m[3])}</b><span>F</span></div><button class="link" type="button">${isOpen?'Hide nutrients':'Nutrients'}</button></div>`;
+    sub.querySelector('.link').onclick = () => { open[meal.id] = !isOpen; render(); };
+    if (isOpen) {
+      const grid = document.createElement('div'); grid.className='mgrid num';
+      let html = [['Fiber',mt.m[4]],['Sugar',mt.m[5]],['Sat fat',mt.m[6]]].map(([n,x])=>`<div><span>${n}</span>${fmt(x)} g</div>`).join('');
+      html += MIC.map(([k,n,u,dv]) => `<div><span>${n}</span>${Math.round((mt.v[k]||0)/dv*100)}%</div>`).join('');
+      grid.innerHTML = html; sub.appendChild(grid);
+    }
+    sec.appendChild(sub);
+    main.appendChild(sec);
+  });
+
+  // day totals
+  const tot = document.createElement('section'); tot.className = 'card';
+  const row = (name, x, goal, unit, cls='') => {
+    const pct = goal ? x/goal*100 : 0;
+    return `<div class="r ${cls}"><span>${name}</span><span class="v num">${fmt(x,unit)} ${unit}${goal?` <span>/ ${fmt(goal,unit)} · ${Math.round(pct)}%</span>`:''}</span>${goal?`<div class="track"><i style="width:${Math.min(100,pct)}%"></i></div>`:''}</div>`;
+  };
+  let h = `<div><h3>Day totals</h3><div class="rows">`;
+  h += row('Calories', t.m[0], TARGET.kcal, 'kcal') + row('Protein', t.m[1], TARGET.p, 'g');
+  h += `<p class="note num">${r0(t.m[1]-t.col)} g complete protein, ${r0(t.col)} g collagen</p>`;
+  h += row('Carbs', t.m[2], TARGET.c, 'g') + row('Fat', t.m[3], TARGET.f, 'g') + row('Fiber', t.m[4], 28, 'g');
+  h += row('Sugar', t.m[5], 0, 'g') + row('Saturated fat', t.m[6], 0, 'g') + `</div></div>`;
+  h += `<div><h3>Vitamins · % daily value</h3><div class="rows">` + MIC.slice(0,13).map(([k,n,u,dv])=>row(n, t.v[k]||0, dv, u)).join('') + `</div></div>`;
+  h += `<div><h3>Minerals · % daily value</h3><div class="rows">` + MIC.slice(13).map(([k,n,u,dv])=>row(n, t.v[k]||0, dv, u, k==='Na' && (t.v.Na||0)>dv ? 'over':'')).join('') + `</div></div>`;
+  h += `<p class="note">Estimates from standard USDA values. Collagen counts toward calories but isn't a complete protein.</p>`;
+  h += `<div class="actions"><button class="btn" type="button" id="clr">Clear this day's food</button></div>`;
+  tot.innerHTML = h;
+  main.appendChild(tot);
+  const cb = tot.querySelector('#clr');
+  cb.onclick = () => {
+    if (cb.dataset.arm) { day(cur).sel = {}; commit(cur); return; }
+    cb.dataset.arm = '1'; cb.textContent = 'Tap again to clear';
+    setTimeout(() => { if (cb.isConnected) { delete cb.dataset.arm; cb.textContent = "Clear this day's food"; } }, 3000);
+  };
+}
+
+function avgWeight(endKey, n){
+  const end = dateOf(endKey); const ws = [];
+  for (let i=0; i<n; i++) { const d = new Date(end); d.setDate(d.getDate()-i); const x = peek(keyOf(d)); if (x && x.w) ws.push(x.w); }
+  return ws.length ? ws.reduce((a,b)=>a+b,0)/ws.length : null;
+}
+
+function renderCal(){
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  head.innerHTML = `
+    <div class="row">
+      <div class="dnav">
+        <button type="button" id="pm" aria-label="Previous month">‹</button>
+        <div class="dtitle">${calMonth.toLocaleDateString(undefined,{month:'long', year:'numeric'})}</div>
+        <button type="button" id="nm" aria-label="Next month">›</button>
+      </div>
+      <button class="lockbtn" type="button" id="lockb">Lock</button>
+    </div>`;
+  head.querySelector('#pm').onclick = () => { calMonth = new Date(y, m-1, 1); render(); };
+  head.querySelector('#nm').onclick = () => { calMonth = new Date(y, m+1, 1); render(); };
+  head.querySelector('#lockb').onclick = lock;
+
+  main.innerHTML = '';
+  const c = document.createElement('section'); c.className = 'card';
+  let g = '<div class="cal">' + ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<div class="dow">${x}</div>`).join('');
+  const first = new Date(y, m, 1); const lead = (first.getDay()+6)%7;
+  const days = new Date(y, m+1, 0).getDate();
+  for (let i=0; i<lead; i++) g += '<div class="cell empty"></div>';
+  const tk = todayKey();
+  for (let dn=1; dn<=days; dn++) {
+    const dt = new Date(y, m, dn); const k = keyOf(dt); const x = peek(k) || {};
+    let cls = 'cell';
+    if (dt.getDay() === 0) cls += ' sun';
+    else if (x.type === 'lift') cls += ' lift';
+    else if (x.type === 'cardio') cls += ' cardio';
+    if (k === tk) cls += ' today';
+    const kc = x.tot && x.tot.k ? (x.tot.k/1000).toFixed(1)+'k' : '';
+    g += `<button type="button" class="${cls}" data-k="${k}" aria-label="${dt.toDateString()}"><span class="n">${dn}</span><span class="s num">${kc}${kc&&x.w?'<br>':''}${x.w?x.w:''}</span></button>`;
+  }
+  g += '</div>';
+  c.innerHTML = g + `<div class="legend"><span><i style="background:var(--lift)"></i>Lifted</span><span><i style="background:var(--cardio)"></i>Cardio</span><span><i style="background:var(--sun)"></i>Sunday</span><span>Numbers: calories, weight</span></div>`;
+  c.querySelectorAll('.cell[data-k]').forEach(b => b.onclick = () => { cur = b.dataset.k; view = 'today'; render(); window.scrollTo(0,0); });
+  main.appendChild(c);
+
+  // this week + weight trend
+  const now = new Date(); const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay()+6)%7));
+  let kcals = [], lifts = 0, cardio = 0;
+  for (let i=0; i<7; i++) { const d = new Date(mon); d.setDate(mon.getDate()+i); const x = peek(keyOf(d)); if (!x) continue; if (x.tot && x.tot.k) kcals.push(x.tot.k); if (x.type==='lift') lifts++; if (x.type==='cardio') cardio++; }
+  const a7 = avgWeight(tk, 7); const prevEnd = new Date(); prevEnd.setDate(prevEnd.getDate()-7); const p7 = avgWeight(keyOf(prevEnd), 7);
+  const s = document.createElement('section'); s.className = 'card';
+  s.innerHTML = `<h3 style="margin:0">This week</h3>
+    <div class="stats num">
+      <div class="stat"><b>${kcals.length ? r0(kcals.reduce((a,b)=>a+b,0)/kcals.length) : '—'}</b><span>avg kcal / day</span></div>
+      <div class="stat"><b>${lifts} · ${cardio}</b><span>lifts · cardio days</span></div>
+      <div class="stat"><b>${a7 ? a7.toFixed(1)+' lb' : '—'}</b><span>7-day avg weight</span></div>
+      <div class="stat"><b>${a7 && p7 ? ((a7-p7)>=0?'+':'')+(a7-p7).toFixed(1)+' lb' : '—'}</b><span>vs last week · aim +0.5 to 1</span></div>
+    </div>`;
+  main.appendChild(s);
+
+  // backup
+  const bk = document.createElement('section'); bk.className = 'card';
+  bk.innerHTML = `<h3 style="margin:0">Backup</h3>
+    <p class="note">Everything is saved only on this phone. Copy a backup now and then and paste it in Notes.</p>
+    <div class="actions"><button class="btn" type="button" id="copyB">Copy backup</button></div>
+    <textarea id="restoreT" placeholder="Paste a backup here to restore it"></textarea>
+    <div class="actions"><button class="btn" type="button" id="restoreB">Restore</button><span class="note" id="bmsg"></span></div>`;
+  main.appendChild(bk);
+  const msg = bk.querySelector('#bmsg');
+  bk.querySelector('#copyB').onclick = () => {
+    const txt = JSON.stringify(DB);
+    const ta = bk.querySelector('#restoreT');
+    const fallback = () => { ta.value = txt; ta.select(); msg.textContent = 'Copy the selected text.'; };
+    try { navigator.clipboard.writeText(txt).then(()=>{ msg.textContent = 'Copied.'; }, fallback); } catch(e) { fallback(); }
+  };
+  const rb = bk.querySelector('#restoreB');
+  rb.onclick = () => {
+    let x; try { x = JSON.parse(bk.querySelector('#restoreT').value); } catch(e) {}
+    if (!x || !x.days) { msg.textContent = 'That text is not a backup from this app.'; return; }
+    if (!rb.dataset.arm) { rb.dataset.arm = '1'; rb.textContent = 'Tap again to replace all data'; return; }
+    DB = x; save(); msg.textContent = 'Restored.'; render();
+  };
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
