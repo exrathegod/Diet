@@ -27,6 +27,7 @@
   --cardio: #1e5a32;
   --sun: #444446;
   --warn: #ff9f0a;
+  --high: #ff453a;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   color-scheme: dark;
 }
@@ -163,6 +164,23 @@ main { max-width: 560px; margin: 0 auto; display: grid; gap: 12px; padding-top: 
 .stat span { font-size: 12px; color: var(--muted); }
 textarea { width: 100%; min-height: 70px; background: var(--raise); color: var(--fg); border: 0; border-radius: 10px; padding: 10px; font: inherit; font-size: 16px; }
 
+/* week */
+.wrow { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; align-items: center; }
+.wrow .nm { font-size: 14px; }
+.wrow .why { font-size: 12px; color: var(--muted); grid-column: 1; }
+.wrow .val { text-align: right; font-size: 13px; color: var(--muted); grid-row: 1 / span 2; grid-column: 2; display: grid; justify-items: end; gap: 3px; }
+.wrow .val b { color: var(--fg); font-weight: 600; font-size: 14px; }
+.wrow .track { grid-column: 1 / -1; height: 4px; margin-top: 4px; }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+.pill.low { background: rgba(255,159,10,.18); color: var(--warn); }
+.pill.good { background: rgba(52,199,89,.18); color: var(--lift); }
+.pill.high { background: rgba(255,69,58,.18); color: var(--high); }
+.wrow.low .track i { background: var(--warn); }
+.wrow.high .track i { background: var(--high); }
+.more { display: grid; gap: 8px; }
+.more div { background: var(--raise); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.more span { display: block; font-size: 12px; color: var(--muted); }
+
 /* tab bar */
 .tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg); border-top: 1px solid var(--line);
@@ -186,6 +204,7 @@ textarea { width: 100%; min-height: 70px; background: var(--raise); color: var(-
   <main id="main"></main>
   <nav class="tabs">
     <button id="tabToday" aria-pressed="true">Today</button>
+    <button id="tabWeek" aria-pressed="false">Week</button>
     <button id="tabCal" aria-pressed="false">Calendar</button>
   </nav>
 </div>
@@ -197,7 +216,7 @@ const MIC = [
   ['B1','Thiamin (B1)','mg',1.2],['B2','Riboflavin (B2)','mg',1.3],['B3','Niacin (B3)','mg',16],['B5','Pantothenic (B5)','mg',5],['B6','Vitamin B6','mg',1.7],
   ['Fol','Folate','mcg',400],['B12','Vitamin B12','mcg',2.4],['Cho','Choline','mg',550],
   ['Ca','Calcium','mg',1300],['Fe','Iron','mg',18],['Mg','Magnesium','mg',420],['P','Phosphorus','mg',1250],['Pot','Potassium','mg',4700],
-  ['Na','Sodium','mg',2300],['Zn','Zinc','mg',11],['Cu','Copper','mg',0.9],['Se','Selenium','mcg',55],['Mn','Manganese','mg',2.3],['O3','Omega-3','g',1.6]
+  ['Na','Sodium','mg',2300],['Zn','Zinc','mg',11],['Cu','Copper','mg',0.9],['Se','Selenium','mcg',55],['Mn','Manganese','mg',2.3],['O3','Omega-3','g',1.6],['I','Iodine','mcg',150]
 ];
 // Vitamin D values below are stored in IU (1 mcg = 40 IU)
 
@@ -254,7 +273,7 @@ const F = {
   smallpot:['Small potatoes','handful, roasted',[180,3.5,28,6,3,1.5,3.5],{A:50,C:14,B1:.1,B3:2.1,B6:.45,Fol:25,Cho:18,Ca:15,Fe:1.4,Mg:40,P:100,Pot:800,Na:15,Zn:.5,Cu:.2,Mn:.25}],
   bakedpot:['Baked potato','1 medium, with butter',[261,4.3,37,11.7,3.8,2,7.3],{A:97,C:16.6,E:.4,K:3.6,B1:.11,B3:2.4,B5:.65,B6:.54,Fol:48,Cho:26,Ca:26,Fe:1.9,Mg:48,P:121,Pot:926,Na:17,Zn:.6,Cu:.2,Se:.7,Mn:.37}],
   rice:    ['Rice','1 fist-size cup, cooked',[205,4.25,44.5,.45,.6,.1,.1],{B1:.25,B2:.02,B3:2.35,B5:.4,B6:.15,Fol:150,Cho:4,Ca:15,Fe:1.9,Mg:19,P:67.5,Pot:55,Na:1.5,Zn:.8,Cu:.1,Se:12,Mn:.375}],
-  oysters: ['Oysters','6 oysters',[60,7,3.5,2,0,0,.5],{A:70,C:5,D:200,B1:.08,B2:.15,B3:1.5,B12:14,Cho:55,Ca:40,Fe:5,Mg:30,P:150,Pot:140,Na:180,Zn:25,Cu:2.5,Se:50,Mn:.3,O3:.4}],
+  oysters: ['Oyster','1 oyster',[10,1.15,.6,.35,0,0,.1],{A:11.5,C:.85,D:33,B1:.013,B2:.025,B3:.25,B12:2.35,Cho:9,Ca:6.5,Fe:.85,Mg:5,P:25,Pot:23.5,Na:30,Zn:4.15,Cu:.42,Se:8.35,Mn:.05,O3:.065}],
   liver:   ['Beef liver','2 oz',[77,11.5,2.2,2.1,0,0,.7],{A:5350,C:.7,D:28,K:2,B1:.11,B2:1.6,B3:7.5,B5:4,B6:.6,Fol:165,B12:33,Cho:190,Ca:3,Fe:2.8,Mg:10,P:220,Pot:180,Na:40,Zn:2.3,Cu:5.6,Se:22,Mn:.18}],
   orange:  ['Orange','1 medium',[62,1.2,15.4,.2,3.1,12.2,0],{A:14,C:70,E:.2,B1:.11,B2:.05,B3:.37,B5:.33,B6:.08,Fol:40,Cho:11,Ca:52,Fe:.13,Mg:13,P:18,Pot:237,Zn:.1,Cu:.06,Se:.7,Mn:.03}],
   steak:   ['Steak','10 oz',[640,75,0,37,0,0,15],{A:10,D:12,E:1.2,K:4,B1:.2,B2:.5,B3:21,B5:1.6,B6:1.8,Fol:25,B12:5.6,Cho:280,Ca:40,Fe:6.5,Mg:70,P:620,Pot:900,Na:155,Zn:13,Cu:.25,Se:80,Mn:.04,O3:.1}],
@@ -283,6 +302,12 @@ const F = {
 const COLLAGEN_PROTEIN = {collagen:18};
 
 // Meals: groups of food ids. q = item uses a count instead of on/off.
+// Iodine (mcg per serving), kept separate so it's easy to adjust
+const IOD = {egg:26, milk:60, kefir:30, vanYog:50, grkYog:50, cheeseG:10, icecream:40, shake:45, mac:25, pizza:25, zombie:25,
+  toastpb:5, oysters:15, salmon:30, tuna:60, steak:5, beefA:15, beef90:10, leanmeat:10, liver:3, meat3:5, jerky:3,
+  potato:50, bakedpot:50, smallpot:30, cookie:5, chips:5, banana:3};
+for (const k in IOD) if (F[k]) F[k][3].I = IOD[k];
+
 const MEALS = [
   { id:'bf', title:'Breakfast', when:'Morning',
     tip:'Eat a carb every day. D3 + K2 goes here with the eggs, carnitine with the carbs.',
@@ -440,12 +465,14 @@ document.addEventListener('visibilitychange', () => {
 /* ---------- render ---------- */
 const head = document.getElementById('head'), main = document.getElementById('main');
 document.getElementById('tabToday').onclick = () => { view='today'; render(); window.scrollTo(0,0); };
+document.getElementById('tabWeek').onclick = () => { view='week'; render(); window.scrollTo(0,0); };
 document.getElementById('tabCal').onclick = () => { view='cal'; calMonth = dateOf(cur); calMonth.setDate(1); render(); window.scrollTo(0,0); };
 
 function render(){
   document.getElementById('tabToday').setAttribute('aria-pressed', String(view==='today'));
   document.getElementById('tabCal').setAttribute('aria-pressed', String(view==='cal'));
-  if (view === 'today') renderToday(); else renderCal();
+  document.getElementById('tabWeek').setAttribute('aria-pressed', String(view==='week'));
+  if (view === 'today') renderToday(); else if (view === 'week') renderWeek(); else renderCal();
 }
 
 function shiftDay(n){ const d = dateOf(cur); d.setDate(d.getDate()+n); cur = keyOf(d); render(); }
@@ -590,6 +617,104 @@ function renderToday(){
     cb.dataset.arm = '1'; cb.textContent = 'Tap again to clear';
     setTimeout(() => { if (cb.isConnected) { delete cb.dataset.arm; cb.textContent = "Clear this day's food"; } }, 3000);
   };
+}
+
+
+const WEEK = [
+  ['Zn','Zinc','testosterone production','oysters, beef'],
+  ['Cu','Copper','iron use, connective tissue','beef liver, oysters'],
+  ['Mg','Magnesium','sleep and free testosterone','avocado, potatoes, banana'],
+  ['D','Vitamin D','testosterone and bones','salmon, eggs, midday sun'],
+  ['Se','Selenium','thyroid and sperm health','lean fish, eggs, beef'],
+  ['I','Iodine','thyroid hormones','milk, yogurt, eggs, potatoes'],
+  ['A','Vitamin A','testes and skin','beef liver, eggs, sweet potato, carrots'],
+  ['O3','Omega-3','inflammation and skin','salmon, oysters'],
+  ['Cho','Choline','liver and focus','eggs, beef liver'],
+  ['B12','Vitamin B12','energy and red blood cells','beef, liver, oysters'],
+  ['Fol','Folate','cell growth and repair','beef liver, avocado, rice'],
+  ['K','Vitamin K','bones, works with D','kiwi, beef liver'],
+  ['C','Vitamin C','collagen and immunity','kiwi, orange, berries'],
+  ['Pot','Potassium','muscle contraction','potatoes, coconut water, avocado'],
+  ['Ca','Calcium','bones','milk, cheese, yogurt'],
+  ['Fe','Iron','oxygen to muscles','beef, liver'],
+  ['E','Vitamin E','antioxidant','avocado, peanut butter']
+];
+const UL = {Cu:8, Se:400, I:900, D:4000, Fe:45, Ca:3000};
+const MICMAP = Object.fromEntries(MIC.map(r => [r[0], r]));
+
+function renderWeek(){
+  const end = dateOf(todayKey()); const start = new Date(end); start.setDate(end.getDate()-6);
+  const fmtD = d => d.toLocaleDateString(undefined,{month:'short', day:'numeric'});
+  head.innerHTML = `
+    <div class="row">
+      <div><div class="dtitle">Last 7 days</div><div class="dsub">${fmtD(start)} to ${fmtD(end)}</div></div>
+      <button class="lockbtn" type="button" id="lockb">Lock</button>
+    </div>`;
+  head.querySelector('#lockb').onclick = lock;
+  main.innerHTML = '';
+
+  const days = [];
+  for (let i=0; i<7; i++) { const d = new Date(end); d.setDate(end.getDate()-i); const k = keyOf(d); const x = peek(k); if (x && x.tot && x.tot.k > 0) days.push(k); }
+  const n = days.length;
+  if (!n) {
+    const c = document.createElement('section'); c.className = 'card';
+    c.innerHTML = `<h3 style="margin:0">Weekly nutrients</h3><p class="note">Log food on the Today tab and your 7-day averages show up here. Zinc, copper, vitamin A and the rest are judged across the week, so a liver night or an oyster night counts toward the whole week.</p>`;
+    main.appendChild(c); return;
+  }
+  const sum = {m:[0,0,0,0,0,0,0], v:{}, col:0};
+  days.forEach(k => addT(sum, dayTotals(k)));
+  const avg = k => (sum.v[k]||0)/n;
+  const am = i => sum.m[i]/n;
+
+  const top = document.createElement('section'); top.className = 'card';
+  top.innerHTML = `<h3 style="margin:0">Daily average · ${n} of 7 days logged</h3>
+    <div class="stats num">
+      <div class="stat"><b>${r0(am(0))}</b><span>kcal · goal 3,600</span></div>
+      <div class="stat"><b>${r0(am(1)-sum.col/n)} g</b><span>complete protein · goal 150</span></div>
+      <div class="stat"><b>${r0(am(2))} g</b><span>carbs</span></div>
+      <div class="stat"><b>${r0(am(3))} g</b><span>fat · keep above 60</span></div>
+    </div>
+    ${n < 4 ? '<p class="note">Log a few more days for a reliable average.</p>' : ''}`;
+  main.appendChild(top);
+
+  const rows = WEEK.map(([k, name, why, foods]) => {
+    const [, , unit, dv] = MICMAP[k]; const x = avg(k); const pct = x/dv*100;
+    let st = pct < 70 ? 'low' : 'good';
+    if (UL[k] && x > UL[k]) st = 'high';
+    return {k, name, why, foods, unit, dv, x, pct, st};
+  });
+
+  // zinc : copper
+  const zn = avg('Zn'), cu = avg('Cu'); const ratio = cu ? zn/cu : 0;
+  const rst = !cu ? 'low' : ratio < 8 ? 'low' : ratio > 15 ? 'high' : 'good';
+  const rmsg = !cu ? 'Not enough copper logged yet' : ratio < 8 ? 'Copper is high relative to zinc. Add oysters or beef, ease off liver.' : ratio > 15 ? 'Zinc is high relative to copper. A liver bite once a week fixes this.' : 'Balanced. Aim for 8 to 15 zinc per 1 copper.';
+
+  const lows = rows.filter(r => r.st === 'low').sort((a,b) => a.pct - b.pct);
+  const highs = rows.filter(r => r.st === 'high');
+  const more = document.createElement('section'); more.className = 'card';
+  let mh = `<h3 style="margin:0">Eat more of</h3>`;
+  if (!lows.length && !highs.length && rst === 'good') mh += `<p class="note">Everything is in range this week. Keep doing what you're doing.</p>`;
+  else {
+    mh += '<div class="more">';
+    lows.slice(0,5).forEach(r => { mh += `<div>${r.name} <span class="num">${Math.round(r.pct)}% of daily value · try ${r.foods}</span></div>`; });
+    if (rst !== 'good') mh += `<div>Zinc to copper <span>${rmsg}</span></div>`;
+    highs.forEach(r => { mh += `<div>${r.name} is above the safe upper limit <span>Ease off for a few days.</span></div>`; });
+    mh += '</div>';
+  }
+  more.innerHTML = mh;
+  main.appendChild(more);
+
+  const list = document.createElement('section'); list.className = 'card';
+  let h = `<h3 style="margin:0">Hormones and health · daily average</h3><div class="rows">`;
+  h += `<div class="wrow ${rst}"><span class="nm">Zinc : copper</span><span class="why">${rmsg}</span><span class="val num"><b>${cu ? ratio.toFixed(1)+' : 1' : '—'}</b><span class="pill ${rst}">${rst==='good'?'Balanced':rst==='low'?'Low':'High'}</span></span></div>`;
+  rows.forEach(r => {
+    h += `<div class="wrow ${r.st}"><span class="nm">${r.name}</span><span class="why">${r.why}</span>
+      <span class="val num"><b>${fmt(r.x, r.unit)} ${r.unit}</b><span class="pill ${r.st}">${Math.round(r.pct)}%</span></span>
+      <div class="track"><i style="width:${Math.min(100, r.pct)}%"></i></div></div>`;
+  });
+  h += `</div><p class="note">Averages only count days you logged food. Vitamin A from sweet potato and carrots is the safe plant form, so high readings on those days are fine.</p>`;
+  list.innerHTML = h;
+  main.appendChild(list);
 }
 
 function avgWeight(endKey, n){
